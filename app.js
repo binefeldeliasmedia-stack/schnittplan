@@ -2,6 +2,7 @@
    Kein eigener Server, keine Zwischenspeicherung von Daten.
    Der Zugangsschluessel lebt nur im Arbeitsspeicher dieses Geraets. */
 
+const VERSION = "v3";
 const CLIENT_ID = "537192931148-phm6tdk42t47cg5alilqtvp9sl0qom7t.apps.googleusercontent.com";
 const SCOPES = "https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/calendar";
 const DATENLISTE = "Schnittplan-Daten";      // versteckte Liste fuer die Stundenkonten
@@ -33,21 +34,44 @@ function melde(text, dauer = 5000){
 }
 
 /* ---------------- Anmeldung ---------------- */
+function stand(text){ $("#tor-stand").textContent = text || ""; }
+function torFehler(text){ $("#tor-fehler").textContent = text || ""; }
+
 function startAnmeldung(){
+  torFehler("");
   if(CLIENT_ID.startsWith("HIER_")){
-    $("#tor-fehler").textContent = "Die App ist noch nicht mit Google verbunden.";
+    torFehler("Die App ist noch nicht mit Google verbunden.");
     return;
   }
+  if(!window.google || !google.accounts || !google.accounts.oauth2){
+    torFehler("Google-Anmeldung konnte nicht geladen werden. Blockiert ein Werbeblocker die Seite?");
+    return;
+  }
+  stand("Google-Fenster wird geöffnet …");
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
     scope: SCOPES,
-    callback: (antwort)=>{
-      if(antwort.error){ $("#tor-fehler").textContent = "Anmeldung abgebrochen."; return; }
+    callback: async (antwort)=>{
+      if(antwort.error){
+        stand(""); torFehler("Google hat abgelehnt: " + antwort.error);
+        return;
+      }
       token = antwort.access_token;
       localStorage.setItem("schonmal", "ja");
-      $("#tor").hidden = true;
-      $("#app").hidden = false;
-      ladeAlles();
+      stand("Angemeldet. Lade deine Aufgaben und Termine …");
+      try{
+        await ladeAlles(true);
+        $("#tor").hidden = true;
+        $("#app").hidden = false;
+        stand("");
+      }catch(e){
+        stand("");
+        torFehler("Daten konnten nicht geladen werden — " + e.message);
+      }
+    },
+    error_callback: (e)=>{
+      stand("");
+      torFehler("Das Google-Fenster wurde geschlossen oder blockiert (" + (e && e.type || "unbekannt") + ").");
     }
   });
   tokenClient.requestAccessToken({prompt: localStorage.getItem("schonmal") ? "" : "consent"});
@@ -62,12 +86,21 @@ $("#abmelden").addEventListener("click", ()=>{
 
 /* Wer schon einmal zugestimmt hat, wird still wieder angemeldet. */
 window.addEventListener("load", ()=>{
+  $("#version").textContent = VERSION;
+  stand("Google-Anmeldung wird geladen …");
   const warten = setInterval(()=>{
-    if(!window.google || !google.accounts) return;
+    if(!window.google || !google.accounts || !google.accounts.oauth2) return;
     clearInterval(warten);
+    stand("");
     if(localStorage.getItem("schonmal")) startAnmeldung();
   }, 120);
-  setTimeout(()=>clearInterval(warten), 8000);
+  setTimeout(()=>{
+    clearInterval(warten);
+    if(!window.google || !google.accounts){
+      stand("");
+      torFehler("Google-Anmeldung lädt nicht. Werbeblocker oder strenger Tracking-Schutz?");
+    }
+  }, 8000);
 });
 
 /* ---------------- Google-Aufrufe ---------------- */
@@ -92,7 +125,7 @@ const T = "https://tasks.googleapis.com/tasks/v1";
 const C = "https://www.googleapis.com/calendar/v3";
 
 /* ---------------- Laden ---------------- */
-async function ladeAlles(){
+async function ladeAlles(werfen){
   const knopf = $("#neu-laden");
   knopf.classList.add("dreht");
   try{
@@ -129,6 +162,7 @@ async function ladeAlles(){
     zeichneAlles();
     melde("");
   }catch(e){
+    if(werfen) throw e;
     if(e.message !== "abgelaufen") melde("Konnte nicht laden: " + e.message);
   }finally{
     knopf.classList.remove("dreht");

@@ -1,6 +1,6 @@
 /* Service Worker: macht die App installierbar und startfaehig ohne Netz.
    Nur das Geruest wird zwischengespeichert - niemals Daten aus Google. */
-const CACHE = "schnittplan-v2";
+const CACHE = "schnittplan-v3";
 const GERUEST = [
   "./",
   "./index.html",
