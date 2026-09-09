@@ -2,7 +2,7 @@
    Kein eigener Server, keine Zwischenspeicherung von Daten.
    Der Zugangsschluessel lebt nur im Arbeitsspeicher dieses Geraets. */
 
-const VERSION = "v4";
+const VERSION = "v5";
 const CLIENT_ID = "537192931148-phm6tdk42t47cg5alilqtvp9sl0qom7t.apps.googleusercontent.com";
 const SCOPES = "https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/calendar";
 const DATENLISTE = "Schnittplan-Daten";      // versteckte Liste fuer die Stundenkonten
@@ -33,86 +33,131 @@ function melde(text, dauer = 5000){
   melde._t = setTimeout(()=>m.classList.remove("an"), dauer);
 }
 
-/* ---------------- Anmeldung ---------------- */
+/* ---------------- Anmeldung ----------------
+   Google merkt sich nicht, welches Konto gemeint ist. Ohne "hint" fragt es bei
+   jedem Start nach - bei mehreren angemeldeten Google-Konten besonders nervig.
+   Deshalb: Adresse nach der ersten Anmeldung merken und kuenftig mitgeben.
+   Gespeichert wird sie nur hier im Browser, nie im Quellcode.            */
 function stand(text){ $("#tor-stand").textContent = text || ""; }
 function torFehler(text){ $("#tor-fehler").textContent = text || ""; }
 
-function startAnmeldung(){
-  torFehler("");
-  if(CLIENT_ID.startsWith("HIER_")){
-    torFehler("Die App ist noch nicht mit Google verbunden.");
-    return;
-  }
-  if(!window.google || !google.accounts || !google.accounts.oauth2){
-    torFehler("Google-Anmeldung konnte nicht geladen werden. Blockiert ein Werbeblocker die Seite?");
-    return;
-  }
-  stand("Google-Fenster wird geöffnet …");
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
-    callback: async (antwort)=>{
-      if(antwort.error){
-        stand(""); torFehler("Google hat abgelehnt: " + antwort.error);
-        return;
-      }
-      token = antwort.access_token;
-      localStorage.setItem("schonmal", "ja");
-      stand("Angemeldet. Lade deine Aufgaben und Termine …");
-      try{
-        await ladeAlles(true);
-        $("#tor").hidden = true;
-        $("#app").hidden = false;
-        stand("");
-      }catch(e){
-        stand("");
-        torFehler("Daten konnten nicht geladen werden — " + e.message);
-      }
-    },
-    error_callback: (e)=>{
-      stand("");
-      torFehler("Das Google-Fenster wurde geschlossen oder blockiert (" + (e && e.type || "unbekannt") + ").");
-    }
+let konto = localStorage.getItem("konto") || "";
+let tokenBis = 0;
+let erneuerung = null;
+
+function gisDa(){ return !!(window.google && google.accounts && google.accounts.oauth2); }
+
+/* still = true: kein Fenster, keine Nachfrage. Klappt nur, wenn Google die
+   Zustimmung schon kennt - sonst muss der Knopf gedrueckt werden. */
+function holeToken(still){
+  return new Promise((aufloesen, ablehnen)=>{
+    if(!gisDa()) return ablehnen(new Error("Google-Anmeldung ist nicht geladen"));
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: SCOPES,
+      hint: konto || undefined,
+      callback: (a)=>{
+        if(a.error) return ablehnen(new Error(a.error));
+        token = a.access_token;
+        tokenBis = Date.now() + (Number(a.expires_in || 3600) - 120) * 1000;
+        localStorage.setItem("schonmal", "ja");
+        planeErneuerung();
+        aufloesen(a);
+      },
+      error_callback: (e)=> ablehnen(new Error((e && e.type) || "abgebrochen"))
+    });
+    client.requestAccessToken({prompt: still ? "" : (konto ? "" : "consent")});
   });
-  tokenClient.requestAccessToken({prompt: localStorage.getItem("schonmal") ? "" : "consent"});
 }
 
-$("#anmelden").addEventListener("click", startAnmeldung);
+/* Kurz vor Ablauf still nachfassen, damit die App nie rauswirft. */
+function planeErneuerung(){
+  clearTimeout(erneuerung);
+  const rest = tokenBis - Date.now();
+  if(rest <= 0) return;
+  erneuerung = setTimeout(()=>{ holeToken(true).catch(()=>{}); }, rest);
+}
+
+async function sorgeFuerToken(){
+  if(token && Date.now() < tokenBis) return;
+  await holeToken(true);
+}
+
+function zeigeApp(){
+  $("#tor").hidden = true;
+  $("#app").hidden = false;
+  $("#fuss-konto").textContent = konto ? "Angemeldet als " + konto : "";
+  stand("");
+}
+function zeigeTor(fehler){
+  $("#app").hidden = true;
+  $("#tor").hidden = false;
+  stand("");
+  torFehler(fehler || "");
+}
+
+async function anmeldenUndLaden(still){
+  torFehler("");
+  if(CLIENT_ID.startsWith("HIER_")) return zeigeTor("Die App ist noch nicht mit Google verbunden.");
+  stand(still ? "Melde dich an …" : "Google-Fenster wird geöffnet …");
+  try{
+    await holeToken(still);
+    stand("Lade deine Aufgaben und Termine …");
+    await ladeAlles(true);
+    zeigeApp();
+  }catch(e){
+    if(still) zeigeTor("");                       // still gescheitert: einfach den Knopf zeigen
+    else zeigeTor(deutscherFehler(e.message));
+  }
+}
+
+function deutscherFehler(m){
+  if(/popup|abgebrochen|closed/i.test(m)) return "Das Google-Fenster wurde geschlossen oder blockiert.";
+  if(/nicht geladen/i.test(m)) return "Google-Anmeldung lädt nicht. Werbeblocker oder Tracking-Schutz?";
+  return "Es hat nicht geklappt — " + m;
+}
+
+$("#anmelden").addEventListener("click", ()=>anmeldenUndLaden(false));
 $("#abmelden").addEventListener("click", ()=>{
-  if(token && window.google) google.accounts.oauth2.revoke(token, ()=>{});
-  token = null; localStorage.removeItem("schonmal");
+  if(token && gisDa()) google.accounts.oauth2.revoke(token, ()=>{});
+  token = null; clearTimeout(erneuerung);
+  localStorage.removeItem("schonmal");
+  localStorage.removeItem("konto");
   location.reload();
 });
 
-/* Wer schon einmal zugestimmt hat, wird still wieder angemeldet. */
 window.addEventListener("load", ()=>{
   $("#version").textContent = VERSION;
   stand("Google-Anmeldung wird geladen …");
   const warten = setInterval(()=>{
-    if(!window.google || !google.accounts || !google.accounts.oauth2) return;
+    if(!gisDa()) return;
     clearInterval(warten);
-    stand("");
-    if(localStorage.getItem("schonmal")) startAnmeldung();
+    if(localStorage.getItem("schonmal")) anmeldenUndLaden(true);
+    else stand("");
   }, 120);
   setTimeout(()=>{
     clearInterval(warten);
-    if(!window.google || !google.accounts){
-      stand("");
-      torFehler("Google-Anmeldung lädt nicht. Werbeblocker oder strenger Tracking-Schutz?");
-    }
-  }, 8000);
+    if(!gisDa()) zeigeTor("Google-Anmeldung lädt nicht. Werbeblocker oder Tracking-Schutz?");
+  }, 9000);
 });
 
 /* ---------------- Google-Aufrufe ---------------- */
-async function api(url, optionen = {}){
+async function api(url, optionen = {}, zweiterVersuch){
   const antwort = await fetch(url, {
     ...optionen,
     headers: {Authorization: "Bearer "+token, "Content-Type":"application/json", ...(optionen.headers||{})}
   });
   if(antwort.status === 401){
+    // Zugang abgelaufen: still erneuern und denselben Aufruf einmal wiederholen.
+    if(!zweiterVersuch){
+      try{
+        token = null;
+        await holeToken(true);
+        return api(url, optionen, true);
+      }catch{ /* still gescheitert - unten weiter */ }
+    }
     token = null;
-    $("#app").hidden = true; $("#tor").hidden = false;
-    $("#tor-fehler").textContent = "Die Anmeldung ist abgelaufen. Bitte neu anmelden.";
+    zeigeTor("Die Anmeldung ist abgelaufen. Bitte einmal neu anmelden.");
     throw new Error("abgelaufen");
   }
   if(!antwort.ok){
@@ -159,6 +204,19 @@ async function ladeAlles(werfen){
     daten.projekte = daten.projekte || [];
     daten.eintraege = daten.eintraege || [];
     termine = evs;
+
+    // Konto einmalig merken, damit Google kuenftig nicht mehr nachfragt.
+    if(!konto){
+      try{
+        const kal = await api(`${C}/calendars/primary`);
+        if(kal && kal.id){
+          konto = kal.id;
+          localStorage.setItem("konto", konto);
+          $("#fuss-konto").textContent = "Angemeldet als " + konto;
+        }
+      }catch{ /* nicht schlimm, dann fragt Google beim naechsten Mal halt nochmal */ }
+    }
+
     zeichneAlles();
     melde("");
   }catch(e){
