@@ -1,6 +1,6 @@
 /* Service Worker: macht die App installierbar und startfaehig ohne Netz.
    Nur das Geruest wird zwischengespeichert - niemals Daten aus Google. */
-const CACHE = "schnittplan-v3";
+const CACHE = "schnittplan-v4";
 const GERUEST = [
   "./",
   "./index.html",
@@ -29,7 +29,7 @@ self.addEventListener("fetch", e => {
 
   // Geruest: erst Netz (damit Updates ankommen), sonst Cache.
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, {cache:"no-cache"})   // HTTP-Zwischenspeicher umgehen
       .then(r => {
         const kopie = r.clone();
         caches.open(CACHE).then(c => c.put(e.request, kopie));
