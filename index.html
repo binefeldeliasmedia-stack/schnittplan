@@ -1,1 +1,333 @@
-<!doctype html><meta charset="utf-8"><title>Schnittplan</title><p style="font-family:system-ui;padding:40px">Wird gerade gebaut …</p>
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Schnittplan</title>
+<meta name="description" content="Aufgaben, Termine und Schnittzeiten an einem Ort.">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#FAF6EF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#15130F" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Schnittplan">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Archivo:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --paper:#FAF6EF; --raised:#FFFDF9; --sunk:#F1EADE;
+  --ink:#1C1813; --ink-2:#5A5145; --ink-3:#8B8073;
+  --rule:#E2D8C7;
+  --amber:#B4711C; --amber-soft:#F6E6CC;
+  --rust:#A3402B; --rust-soft:#F6DCD5;
+  --slate:#41586B; --slate-soft:#DFE7ED;
+  --gruen:#4A6B43;
+  --schatten:0 1px 2px rgba(28,24,19,.05), 0 8px 24px -16px rgba(28,24,19,.25);
+  --hoch:0 18px 50px -12px rgba(28,24,19,.35);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#15130F; --raised:#1D1A15; --sunk:#100E0B;
+    --ink:#F2EBDF; --ink-2:#B3A897; --ink-3:#7C7263;
+    --rule:#2E2921;
+    --amber:#E0A050; --amber-soft:#3A2C16;
+    --rust:#D97A60; --rust-soft:#3B211A;
+    --slate:#9FBBD0; --slate-soft:#1E2932;
+    --gruen:#9CBF8F;
+    --schatten:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.8);
+    --hoch:0 18px 50px -12px rgba(0,0,0,.9);
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);
+  font-family:"Archivo","Helvetica Neue",Arial,sans-serif;font-size:15px;line-height:1.55;
+  -webkit-font-smoothing:antialiased;overscroll-behavior-y:none}
+img{max-width:100%}
+button{font:inherit;cursor:pointer}
+.app{max-width:900px;margin:0 auto;padding:0 18px calc(40px + env(safe-area-inset-bottom))}
+
+/* ---------- Anmeldung ---------- */
+.tor{min-height:100svh;display:grid;place-items:center;padding:28px;text-align:center}
+.tor-inhalt{display:flex;flex-direction:column;gap:20px;align-items:center;max-width:340px}
+.tor img{width:76px;height:76px;border-radius:19px;box-shadow:var(--schatten)}
+.tor h1{font-family:"Fraunces",Georgia,serif;font-variation-settings:"opsz" 72;
+  font-size:31px;font-weight:600;margin:0;line-height:1.15}
+.tor p{color:var(--ink-2);margin:0;font-size:14.5px}
+.gknopf{display:flex;align-items:center;gap:11px;background:var(--ink);color:var(--paper);
+  border:none;border-radius:11px;padding:13px 22px;font-size:15px;font-weight:600}
+.gknopf:hover{filter:brightness(1.15)}
+.gknopf:focus-visible{outline:2px solid var(--amber);outline-offset:3px}
+.tor .klein{font-size:12.5px;color:var(--ink-3);max-width:300px}
+
+/* ---------- Leiste ---------- */
+.leiste{position:sticky;top:0;z-index:20;background:var(--paper);
+  padding:calc(16px + env(safe-area-inset-top)) 0 11px;display:flex;flex-direction:column;gap:12px;
+  border-bottom:1px solid var(--rule);margin-bottom:22px}
+.marke{display:flex;justify-content:space-between;align-items:baseline;gap:14px}
+.marke .name{font-family:"Fraunces",Georgia,serif;font-variation-settings:"opsz" 32;
+  font-size:20px;font-weight:600;line-height:1}
+.marke .rechts{display:flex;align-items:center;gap:10px}
+.marke .tag{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap}
+.neu-laden{background:none;border:none;color:var(--ink-3);font-size:16px;padding:2px 4px;line-height:1}
+.neu-laden:hover{color:var(--amber)}
+.neu-laden.dreht{animation:dreh .9s linear infinite}
+@keyframes dreh{to{transform:rotate(360deg)}}
+.reiter{display:flex;gap:3px;background:var(--sunk);padding:3px;border-radius:10px}
+.reiter button{flex:1;border:none;background:none;color:var(--ink-3);font-size:13.5px;
+  font-weight:500;padding:8px 6px;border-radius:8px;transition:.15s}
+.reiter button[aria-selected="true"]{background:var(--raised);color:var(--ink);box-shadow:var(--schatten)}
+.reiter button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+.melder{display:none;padding:10px 13px;border-radius:9px;font-size:13px;
+  background:var(--rust-soft);color:var(--rust);border-left:3px solid var(--rust)}
+.melder.an{display:block}
+
+.sicht{display:none;flex-direction:column;gap:28px}
+.sicht.an{display:flex}
+section{display:flex;flex-direction:column;gap:12px}
+h2{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10.5px;font-weight:600;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin:0;
+  display:flex;align-items:center;gap:11px}
+h2::after{content:"";flex:1;height:1px;background:var(--rule)}
+.leerhinweis{color:var(--ink-3);font-size:13.5px;font-style:italic;margin:0}
+
+.gruss{font-family:"Fraunces",Georgia,serif;font-variation-settings:"opsz" 96;
+  font-size:clamp(24px,5vw,33px);font-weight:600;line-height:1.15;margin:0;text-wrap:balance}
+.gruss em{font-style:normal;color:var(--amber)}
+
+.block{background:var(--raised);border:1px solid var(--rule);border-radius:11px;
+  padding:14px 16px;display:flex;gap:13px;align-items:baseline;box-shadow:var(--schatten)}
+.block .uhr{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;font-weight:600;
+  color:var(--amber);white-space:nowrap;font-variant-numeric:tabular-nums}
+.block.kundenblock .uhr{color:var(--slate)}
+.block .titel{font-weight:500}
+.stapel{display:flex;flex-direction:column;gap:8px}
+.pflicht{display:flex;gap:12px;align-items:baseline;padding:12px 14px;border-radius:10px;
+  background:var(--rust-soft);border-left:3px solid var(--rust)}
+.pflicht .wann{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10.5px;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--rust);white-space:nowrap}
+
+/* ---------- Kalender ---------- */
+.wochentitel{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10.5px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);padding:14px 2px 6px}
+.woche{display:flex;flex-direction:column;gap:2px}
+.tagzeile{display:grid;grid-template-columns:46px 1fr 30px;gap:9px;align-items:start;
+  padding:8px 9px;border-radius:10px;background:var(--raised);border:1px solid var(--rule)}
+.tagzeile.frei{background:transparent;border-style:dashed}
+.tagzeile.istheute{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber)}
+.tagkopf{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10.5px;color:var(--ink-3);
+  line-height:1.3;padding-top:3px}
+.tagkopf b{display:block;font-size:15px;color:var(--ink-2);font-weight:600}
+.eintraege{display:flex;flex-direction:column;gap:5px;min-height:24px;justify-content:center}
+.leer{font-size:12.5px;color:var(--ink-3);font-style:italic}
+.ev{display:flex;gap:8px;align-items:baseline;text-align:left;width:100%;border:none;
+  border-radius:7px;padding:6px 9px;font-size:13px;background:var(--sunk);color:var(--ink)}
+.ev:hover{filter:brightness(.97)}
+.ev:focus-visible{outline:2px solid var(--amber);outline-offset:1px}
+.ev .zeit{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11px;
+  font-variant-numeric:tabular-nums;white-space:nowrap;opacity:.9}
+.ev.schnitt{background:var(--amber-soft);color:var(--amber)}
+.ev.kunde{background:var(--slate-soft);color:var(--slate)}
+.plustag{border:1px dashed var(--rule);background:none;color:var(--ink-3);border-radius:8px;
+  width:30px;height:30px;font-size:16px;line-height:1;padding:0}
+.plustag:hover{border-color:var(--amber);color:var(--amber);border-style:solid}
+.plustag:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+/* ---------- Projekte ---------- */
+.projekte{display:grid;grid-template-columns:repeat(auto-fit,minmax(268px,1fr));gap:12px}
+.projekt{border:1px solid var(--rule);border-radius:12px;padding:16px;background:var(--raised);
+  display:flex;flex-direction:column;gap:11px}
+.projekt .paar{font-family:"Fraunces",Georgia,serif;font-variation-settings:"opsz" 24;
+  font-size:18px;font-weight:600;line-height:1.2;margin:0;display:flex;justify-content:space-between;gap:10px}
+.projekt .weg-klein{background:none;border:none;color:var(--ink-3);font-size:15px;line-height:1;padding:0 2px}
+.projekt .weg-klein:hover{color:var(--rust)}
+.stand{display:flex;justify-content:space-between;align-items:baseline;
+  font-family:"JetBrains Mono",ui-monospace,monospace;font-size:11.5px;color:var(--ink-3);
+  font-variant-numeric:tabular-nums}
+.stand .gross{font-size:15px;font-weight:600;color:var(--ink)}
+.balken{height:6px;border-radius:3px;background:var(--sunk);overflow:hidden}
+.balken i{display:block;height:100%;background:var(--amber);border-radius:3px;transition:width .35s}
+.buchen{display:flex;flex-wrap:wrap;gap:6px;align-items:center;border-top:1px solid var(--rule);padding-top:10px}
+.buchen .hinweis{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+  font-family:"JetBrains Mono",ui-monospace,monospace;color:var(--ink-3);width:100%}
+.plus{background:var(--sunk);color:var(--ink);border:1px solid var(--rule);border-radius:7px;
+  padding:6px 11px;font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
+.plus:hover{background:var(--amber-soft);border-color:var(--amber);color:var(--amber)}
+.plus:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.zurueck{margin-left:auto;background:none;border:none;color:var(--ink-3);font-size:12px;
+  text-decoration:underline;padding:6px 2px}
+.zurueck:hover{color:var(--rust)}
+.log{display:flex;flex-direction:column;gap:3px;font-size:11.5px;color:var(--ink-3);
+  font-family:"JetBrains Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.log div{display:flex;justify-content:space-between}
+.neuprojekt{border:1px dashed var(--rule);border-radius:12px;padding:16px;display:grid;
+  place-items:center;color:var(--ink-3);font-size:14px;background:none;min-height:110px}
+.neuprojekt:hover{border-color:var(--amber);color:var(--amber);border-style:solid}
+
+/* ---------- Aufgaben ---------- */
+.liste{border-top:1px solid var(--rule)}
+.zeile{display:grid;grid-template-columns:26px 68px 1fr;gap:12px;align-items:baseline;
+  padding:12px 3px;border-bottom:1px solid var(--rule)}
+.zeile .frist{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;color:var(--ink-3);
+  font-variant-numeric:tabular-nums}
+.zeile.dringend .frist{color:var(--rust);font-weight:600}
+.zeile .titel{font-weight:500}
+.zeile .notiz{display:block;font-weight:400;font-size:12.5px;color:var(--ink-3);margin-top:2px}
+.zeile.fertig .titel{text-decoration:line-through;color:var(--ink-3);font-weight:400}
+.zeile.fertig .frist{color:var(--ink-3);font-weight:400}
+.haken{width:19px;height:19px;border-radius:5px;border:1.5px solid var(--rule);background:var(--raised);
+  padding:0;display:grid;place-items:center;color:transparent;font-size:12px;line-height:1;transition:.15s}
+.haken:hover{border-color:var(--amber)}
+.haken:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.haken[aria-pressed="true"]{background:var(--gruen);border-color:var(--gruen);color:var(--paper)}
+.neuaufgabe{display:flex;gap:8px;padding-top:13px}
+.neuaufgabe input{flex:1;font:inherit;font-size:14px;padding:9px 11px;border-radius:9px;
+  border:1px solid var(--rule);background:var(--raised);color:var(--ink)}
+.neuaufgabe input:focus-visible{outline:2px solid var(--amber);outline-offset:0}
+
+/* ---------- Formular ---------- */
+.schleier{position:fixed;inset:0;background:rgba(28,24,19,.5);display:none;place-items:center;
+  padding:18px;z-index:60}
+.schleier.an{display:grid}
+.karte{background:var(--raised);border:1px solid var(--rule);border-radius:14px;padding:20px;
+  width:min(400px,100%);box-shadow:var(--hoch);display:flex;flex-direction:column;gap:14px;
+  max-height:88svh;overflow-y:auto}
+.karte h3{font-family:"Fraunces",Georgia,serif;font-variation-settings:"opsz" 32;
+  font-size:18px;font-weight:600;margin:0}
+.feld{display:flex;flex-direction:column;gap:5px}
+.feld label{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:10.5px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.feld input{font:inherit;font-size:16px;padding:9px 11px;border-radius:8px;border:1px solid var(--rule);
+  background:var(--paper);color:var(--ink);width:100%}
+.feld input:focus-visible{outline:2px solid var(--amber);outline-offset:0}
+.paarfeld{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ganztags{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink-2)}
+.ganztags input{width:17px;height:17px;accent-color:var(--amber)}
+.knopfreihe{display:flex;gap:8px;align-items:center;margin-top:2px}
+.haupt{background:var(--amber);color:#fff;border:none;border-radius:9px;padding:11px 18px;
+  font-weight:600;font-size:14px;flex:1}
+.haupt:hover{filter:brightness(1.08)}
+.haupt[disabled]{opacity:.5;cursor:default}
+.neben{background:none;border:1px solid var(--rule);color:var(--ink-2);border-radius:9px;
+  padding:11px 14px;font-size:14px}
+.weg{background:none;border:none;color:var(--rust);font-size:13px;text-decoration:underline;padding:6px 2px}
+
+.fuss{font-size:12px;color:var(--ink-3);border-top:1px solid var(--rule);padding-top:15px;
+  margin-top:30px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.fuss button{background:none;border:none;color:var(--ink-3);font-size:12px;text-decoration:underline;padding:0}
+.fuss button:hover{color:var(--rust)}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media (max-width:620px){
+  .app{padding:0 13px calc(34px + env(safe-area-inset-bottom))}
+  .zeile{grid-template-columns:26px 1fr;gap:10px}
+  .zeile .frist{grid-column:2;order:3}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== Anmeldetor ===== -->
+<div class="tor" id="tor">
+  <div class="tor-inhalt">
+    <img src="icon-512.png" alt="">
+    <h1>Schnittplan</h1>
+    <p>Deine Aufgaben, Termine und Schnittzeiten — direkt aus deinem Google-Konto.</p>
+    <button class="gknopf" id="anmelden" type="button">Mit Google anmelden</button>
+    <p class="klein">Die App speichert nichts auf einem fremden Server. Alles liegt in deinem
+      Google-Konto, der Zugang bleibt auf diesem Gerät.</p>
+    <p class="klein" id="tor-fehler" style="color:var(--rust)"></p>
+  </div>
+</div>
+
+<!-- ===== App ===== -->
+<div class="app" id="app" hidden>
+  <div class="leiste">
+    <div class="marke">
+      <span class="name">Schnittplan</span>
+      <span class="rechts">
+        <span class="tag" id="heute-tag"></span>
+        <button class="neu-laden" id="neu-laden" type="button" aria-label="Neu laden">↻</button>
+      </span>
+    </div>
+    <div class="reiter" role="tablist">
+      <button role="tab" aria-selected="true"  data-sicht="heute">Heute</button>
+      <button role="tab" aria-selected="false" data-sicht="kalender">Kalender</button>
+      <button role="tab" aria-selected="false" data-sicht="arbeit">Aufgaben</button>
+    </div>
+    <div class="melder" id="melder"></div>
+  </div>
+
+  <div class="sicht an" id="sicht-heute">
+    <section><h1 class="gruss" id="gruss"></h1></section>
+    <section><h2>Heute im Kalender</h2><div class="stapel" id="heute-termine"></div></section>
+    <section><h2>Fällig</h2><div class="stapel" id="heute-faellig"></div></section>
+    <section><h2>Stunden buchen</h2><div class="projekte" id="projekte-heute"></div></section>
+  </div>
+
+  <div class="sicht" id="sicht-kalender">
+    <section><h2>Kalender — tippen zum Ändern</h2><div id="kalender"></div></section>
+  </div>
+
+  <div class="sicht" id="sicht-arbeit">
+    <section><h2>Projekte</h2><div class="projekte" id="projekte-arbeit"></div></section>
+    <section>
+      <h2>Aufgaben</h2>
+      <div class="liste" id="aufgaben"></div>
+      <div class="neuaufgabe">
+        <input type="text" id="neue-aufgabe" placeholder="Neue Aufgabe …" autocomplete="off">
+        <button class="plus" id="aufgabe-anlegen" type="button">Anlegen</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="fuss">
+    <span id="fuss-konto"></span>
+    <button id="abmelden" type="button">Abmelden</button>
+  </div>
+</div>
+
+<!-- Termin-Formular -->
+<div class="schleier" id="schleier-termin">
+  <div class="karte" role="dialog" aria-modal="true" aria-labelledby="t-kopf">
+    <h3 id="t-kopf">Neuer Termin</h3>
+    <div class="feld"><label for="t-titel">Was</label>
+      <input type="text" id="t-titel" autocomplete="off" placeholder="z. B. Schnitt Paul und Xenia"></div>
+    <div class="feld"><label for="t-datum">Wann</label><input type="date" id="t-datum"></div>
+    <label class="ganztags"><input type="checkbox" id="t-ganztags"> Ganzer Tag</label>
+    <div class="paarfeld" id="t-zeiten">
+      <div class="feld"><label for="t-von">Von</label><input type="time" id="t-von" step="900"></div>
+      <div class="feld"><label for="t-bis">Bis</label><input type="time" id="t-bis" step="900"></div>
+    </div>
+    <div class="knopfreihe">
+      <button class="haupt" id="t-speichern" type="button">Speichern</button>
+      <button class="neben" id="t-abbrechen" type="button">Abbrechen</button>
+      <button class="weg" id="t-loeschen" type="button" hidden>Löschen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Projekt-Formular -->
+<div class="schleier" id="schleier-projekt">
+  <div class="karte" role="dialog" aria-modal="true" aria-labelledby="p-kopf">
+    <h3 id="p-kopf">Neues Projekt</h3>
+    <div class="feld"><label for="p-name">Name</label>
+      <input type="text" id="p-name" autocomplete="off" placeholder="z. B. Hochzeit Meier"></div>
+    <div class="feld"><label for="p-geplant">Geplante Stunden</label>
+      <input type="number" id="p-geplant" min="1" max="200" step="1" value="12"></div>
+    <div class="knopfreihe">
+      <button class="haupt" id="p-speichern" type="button">Anlegen</button>
+      <button class="neben" id="p-abbrechen" type="button">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="app.js"></script>
+</body>
+</html>

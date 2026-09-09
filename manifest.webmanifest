@@ -1,0 +1,17 @@
+{
+  "name": "Schnittplan",
+  "short_name": "Schnittplan",
+  "description": "Aufgaben, Termine und Schnittzeiten an einem Ort.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#1C1813",
+  "theme_color": "#1C1813",
+  "lang": "de",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
