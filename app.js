@@ -2,7 +2,7 @@
    Kein eigener Server, keine Zwischenspeicherung von Daten.
    Der Zugangsschluessel lebt nur im Arbeitsspeicher dieses Geraets. */
 
-const CLIENT_ID = "HIER_CLIENT_ID";          // wird beim Einrichten gesetzt
+const CLIENT_ID = "537192931148-phm6tdk42t47cg5alilqtvp9sl0qom7t.apps.googleusercontent.com";
 const SCOPES = "https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/calendar";
 const DATENLISTE = "Schnittplan-Daten";      // versteckte Liste fuer die Stundenkonten
 const DATENTASK  = "stunden";
