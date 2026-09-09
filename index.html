@@ -42,6 +42,9 @@
   }
 }
 *{box-sizing:border-box}
+/* Muss vor allem anderen stehen: .tor hat display:grid, und das wuerde das
+   hidden-Attribut sonst ueberstimmen — der Anmeldeschirm bliebe fuer immer sichtbar. */
+[hidden]{display:none!important}
 html,body{margin:0}
 body{background:var(--paper);color:var(--ink);
   font-family:"Archivo","Helvetica Neue",Arial,sans-serif;font-size:15px;line-height:1.55;
